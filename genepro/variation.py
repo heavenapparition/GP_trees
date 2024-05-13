@@ -4,7 +4,7 @@ from numpy.random import normal as randn
 from numpy.random import choice as randc
 from numpy.random import shuffle
 from copy import deepcopy
-
+import scipy.optimize as opt
 from genepro.node import Node
 from genepro.node_impl import Constant
 
@@ -182,7 +182,7 @@ def subtree_mutation(tree : Node, internal_nodes : list, leaf_nodes : list,
     tree = branch
   return tree
 
-def coeff_mutation(tree : Node, prob_coeff_mut : float= 0.25, temp : float=0.25) -> Node:
+def coeff_mutation(tree : Node, prob_coeff_mut : float= 0.5, temp : float=0.25, fitness_function=None) -> Node:
   """
   Applies random coefficient mutations to constant nodes 
 
@@ -200,15 +200,26 @@ def coeff_mutation(tree : Node, prob_coeff_mut : float= 0.25, temp : float=0.25)
   Node
     the tree after coefficient mutation (it is the same as the tree in input)
   """
+  def score_tree_with_constants(constants_new_values):
+    cur_tree_for_score = deepcopy(tree)
+    coeffs = [n for n in cur_tree_for_score.get_subtree() if type(n) == Constant]
+    for idx, c in enumerate(coeffs):
+      c.set_value(constants_new_values[idx])
+    return fitness_function(cur_tree_for_score)
+  
   coeffs = [n for n in tree.get_subtree() if type(n) == Constant]
-  for c in coeffs:
+  if fitness_function and len(coeffs) > 0:
+    coef_values = [c.get_value() for c in coeffs]
+    optimized = opt.minimize(score_tree_with_constants, coef_values, method='Nelder-Mead')
+    new_c_values = optimized.x
+  for idx, c in enumerate(coeffs):
     # decide wheter it should be applied
     if randu() < prob_coeff_mut:
       v = c.get_value()
-      # update the value by +- temp relative to current value
       new_v = v + temp*np.abs(v)*randn()
-      c.set_value(new_v)
-  
+    elif fitness_function and len(coeffs) > 0:
+      new_v = new_c_values[idx]
+    c.set_value(new_v)
   return tree
 
 def __sample_node(tree : Node, unif_depth : bool=True) -> Node:

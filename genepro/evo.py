@@ -173,6 +173,7 @@ class Evolution:
     """
     Performs one generation, which consists of parent selection, offspring generation, and fitness evaluation
     """
+    self.coeff_opts[-1]['kwargs'] = {'fitness_function': self.fitness_function}
     # select promising parents
     sel_fun = self.selection["fun"]
     parents = sel_fun(self.population, self.pop_size, **self.selection["kwargs"])
